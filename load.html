@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Transfer Learning Image Classifier with Save and Load Functionality</title>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/mobilenet"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/knn-classifier"></script>
+    <style>
+        #container {
+            width: 100%;
+            height: 100%;
+            display: block;
+        }
+
+        #webcam {
+            display: block;
+            margin: 0 auto;
+        }
+
+        #console {
+
+            width: 200px;
+            display: block;
+            margin: 0 auto;
+            margin-bottom: 50px !important;
+        }
+
+        #buttons {
+            width: 400px;
+            display: block;
+            margin: 0 auto;
+        }
+
+        #save {
+            margin-left: 20px;
+        }
+
+        #jsonFile {
+
+            width: 400px;
+            display: block;
+            margin: 0 auto;
+            margin-top: 20px;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="container">
+        <video autoplay playsinline muted id="webcam" width="500" height="400"></video>
+        <div id="console"></div>
+    </div>
+</body>
+<script>
+    const webcamElement = document.getElementById('webcam');
+    let classifier = knnClassifier.create();
+    let net;
+    fetch("weights.json")
+        .then(response => response.json())
+        .then(json => loadJSON(json));
+
+    function loadJSON(data) {
+        classifier = knnClassifier.create();
+        classifier.setClassifierDataset(Object.fromEntries(JSON.parse(data).map(([label, data, shape]) => [label, tf.tensor(data, shape)])));
+    }
+    async function app() {
+        console.log('Loading mobilenet..');
+        net = await mobilenet.load();
+        console.log('Successfully loaded model');
+        const webcam = await tf.data.webcam(webcamElement);
+
+
+        while (true) {
+            if (classifier.getNumClasses() > 0) {
+                const img = await webcam.capture();
+                const activation = net.infer(img, 'conv_preds');
+                const result = await classifier.predictClass(activation);
+
+                const classes = ['Idle', 'Object 1', 'Object 2', 'Object 3', 'Object 4'];
+                console.log(classes[result.label])
+                document.getElementById('console').innerText = `
+  Recognized Object: ${classes[result.label]}\n
+  Probability: ${result.confidences[result.label].toFixed(2)}
+`;
+                img.dispose();
+            }
+
+            await tf.nextFrame();
+        }
+
+    }
+    app();
+</script>
+
+</html>

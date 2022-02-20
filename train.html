@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Transfer Learning Image Classifier with Save and Load Functionality</title>
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/mobilenet"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/knn-classifier"></script>
+  <style>
+    #container {
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+
+    #webcam {
+      display: block;
+      margin: 0 auto;
+    }
+
+    #console {
+
+      width: 200px;
+      display: block;
+      margin: 0 auto;
+      margin-bottom: 50px !important;
+    }
+
+    #buttons {
+      width: 400px;
+      display: block;
+      margin: 0 auto;
+    }
+
+    #save {
+      margin-left: 20px;
+    }
+
+    #jsonFile {
+
+      width: 400px;
+      display: block;
+      margin: 0 auto;
+      margin-top: 20px;
+    }
+  </style>
+</head>
+
+<body>
+
+
+  <div id="container">
+    <video autoplay playsinline muted id="webcam" width="500" height="400"></video>
+    <div id="console"></div>
+    <div id="buttons">
+      <button id="class-a">Idle</button>
+      <button id="class-b">Object 1</button>
+      <button id="class-c">Object 2</button>
+      <button id="class-d">Object 3</button>
+      <button id="class-e">Object 4</button>
+      <button id="save" onclick="saveJSONFile()">Save</button>
+    </div>
+    <form id="jsonFile" name="jsonFile" enctype="multipart/form-data" method="post">
+      <input type='file' id='fileinput'>
+      <input type='button' id='btnLoad' value='Load' onclick='loadJSON();'>
+    </form>
+  </div>
+</body>
+
+<script>
+  const webcamElement = document.getElementById('webcam');
+  let classifier = knnClassifier.create();
+  let net;
+  async function app() {
+    console.log('Loading mobilenet..');
+    net = await mobilenet.load();
+    console.log('Successfully loaded model');
+    const webcam = await tf.data.webcam(webcamElement);
+ 
+    const addExample = async classId => {
+      const img = await webcam.capture();
+      const activation = net.infer(img, true);
+      classifier.addExample(activation, classId);
+      document.getElementById('console').style.height = "40px"
+      img.dispose();
+    };
+
+    document.getElementById('class-a').addEventListener('click', () => addExample(0));
+    document.getElementById('class-b').addEventListener('click', () => addExample(1));
+    document.getElementById('class-c').addEventListener('click', () => addExample(2));
+    document.getElementById('class-d').addEventListener('click', () => addExample(3));
+    document.getElementById('class-e').addEventListener('click', () => addExample(4));
+
+    while (true) {
+      if (classifier.getNumClasses() > 0) {
+        const img = await webcam.capture();
+        const activation = net.infer(img, 'conv_preds');
+        const result = await classifier.predictClass(activation);
+        const classes = ['Idle', 'Object 1', 'Object 2', 'Object 3', 'Object 4'];
+        document.getElementById('console').innerText = `
+        Recognized Object: ${classes[result.label]}\n
+        Probability: ${result.confidences[result.label].toFixed(2)}
+      `;
+        img.dispose();
+      }
+      await tf.nextFrame();
+    }
+
+  }
+
+  function saveJSONFile() {
+    let saveJSON = JSON.stringify(Object.entries(classifier.getClassifierDataset()).map(([label, data]) => [label, Array.from(data.dataSync()), data.shape]));
+    saveText(JSON.stringify(saveJSON), "weights.json");
+  }
+
+  function saveText(text, filename) {
+    var a = document.createElement('a');
+    a.setAttribute('href', 'data:text/plain;charset=utf-8,' + encodeURIComponent(text));
+    a.setAttribute('download', filename);
+    a.click()
+  }
+
+  function loadJSON() {
+    var input, file, file;
+    if (typeof window.FileReader !== 'function') {
+      alert("The file API is not supported on this browser yet.");
+      return;
+    }
+    input = document.getElementById('fileinput');
+    if (!input) {
+      alert("Could not find the fileinput element.");
+    }
+    else if (!input.files) {
+      alert("This browser does notsupport the `files` property of file inputs.");
+    }
+    else if (!input.files[0]) {
+      alert("Please select a file before clicking 'Load'");
+    }
+    else {
+      file = input.files[0];
+      fileR = new FileReader();
+      fileR.onload = loadedJSON;
+      fileR.readAsText(file);
+    }
+    function loadedJSON(e) {
+      let jsonContent = e.target.result;
+      var filteredJSON = JSON.parse(jsonContent);
+      putJson(filteredJSON);
+    }
+  }
+
+  function putJson(filteredJSON) {
+    classifier = knnClassifier.create();
+    classifier.setClassifierDataset(Object.fromEntries(JSON.parse(filteredJSON).map(([label, data, shape]) => [label, tf.tensor(data, shape)])));
+  }
+
+  app();
+</script>
+
+</html>
