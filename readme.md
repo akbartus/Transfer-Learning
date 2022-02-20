@@ -28,4 +28,4 @@ The application consist of two parts:
 5. If test was successfull and previously trained images are recognized, put "weights.json" file into the same folder as the application on server. Use "load.html" file to load trained image classification.
 
 ### **Demo**
-To see the application: [Demo application](https://tflearning.glitch.me)
+To see the application: [Demo application](https://tflearning.glitch.me/load.html)
