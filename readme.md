@@ -1,5 +1,4 @@
 # TensorFlow.js Transfer Learning Image Classifier with Saving and Loading Features
-![Ohio University](img/screenshot.jpg)
 
 ### **Description / Rationale**
 Transfer Learning Image Classifier codelab (https://codelabs.developers.google.com/codelabs/tensorflowjs-teachablemachine-codelab), unfortunately, does not provide the functionality for saving already trained image classifier for future use. As such, all trained images could be lost right after refreshing of the browser.    
